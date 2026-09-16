@@ -1,0 +1,19 @@
+{
+  "name": "azul-webgpu",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "libs/*",
+    "engine"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @azul/engine",
+    "build": "npm run build -w @azul/engine",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}
