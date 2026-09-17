@@ -10,17 +10,37 @@ export class PCSNode {
   }
 
   getNumChildren(): number {
-    // TODO
-    throw Error();
+    let num: number = 0;
+    let node: PCSNode | null = this.child;
+    while (node != null) {
+      num++;
+      node = node.nextSibling;
+    }
+    return num;
   }
 
   getNumSiblings(): number {
-    // TODO
-    throw Error();
+    // Go to first child
+    let node: PCSNode | null = this;
+    while (node.prevSibling != null) {
+      node = node.prevSibling;
+    }
+    let num: number = 0;
+    while (node != null) {
+      num++;
+      node = node.nextSibling;
+    }
+    return num;
   }
 
   getLevel(): number {
-    // TODO
-    throw Error();
+    // Go to root
+    let node: PCSNode | null = this;
+    let level: number = 0;
+    while (node != null) {
+      if (node.parent) level++;
+      node = node.parent;
+    }
+    return level;
   }
 }
