@@ -12,7 +12,7 @@ export class PCSNode {
   getNumChildren(): number {
     let num: number = 0;
     let node: PCSNode | null = this.child;
-    while (node != null) {
+    while (node !== null) {
       num++;
       node = node.nextSibling;
     }
@@ -20,27 +20,27 @@ export class PCSNode {
   }
 
   getNumSiblings(): number {
-    // Go to first child
+    // Go to first sibling
     let node: PCSNode | null = this;
-    while (node.prevSibling != null) {
+    while (node.prevSibling !== null) {
       node = node.prevSibling;
     }
     let num: number = 0;
-    while (node != null) {
+    while (node !== null) {
       num++;
       node = node.nextSibling;
     }
     return num;
   }
 
-  getLevel(): number {
+  getDepth(): number {
     // Go to root
-    let node: PCSNode | null = this;
-    let level: number = 0;
-    while (node != null) {
-      if (node.parent) level++;
+    let node: PCSNode | null = this.parent;
+    let depth: number = 0;
+    while (node !== null) {
+      depth++;
       node = node.parent;
     }
-    return level;
+    return depth;
   }
 }

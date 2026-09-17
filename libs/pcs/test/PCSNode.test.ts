@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { PCSNode } from "../src";
+import { PCSNode } from "@azul/pcs";
 
 function link(parent: PCSNode, ...children: PCSNode[]) {
   parent.child = children[0] ?? null;
@@ -11,14 +11,12 @@ function link(parent: PCSNode, ...children: PCSNode[]) {
 }
 
 describe("PCSNode", () => {
-  `
-    Root
-        -> A
-            -> D
-            -> E
-        -> B
-        -> C
-    `;
+  // Root
+  //   -> A
+  //     -> D
+  //     -> E
+  //   -> B
+  //   -> C
   let root: PCSNode, a: PCSNode, b: PCSNode, c: PCSNode, d: PCSNode, e: PCSNode;
 
   beforeEach(() => {
@@ -57,8 +55,8 @@ describe("PCSNode", () => {
   });
 
   it("reports level with root at level 0", () => {
-    expect(root.getLevel()).toBe(0);
-    expect(b.getLevel()).toBe(1);
-    expect(d.getLevel()).toBe(2);
+    expect(root.getDepth()).toBe(0);
+    expect(b.getDepth()).toBe(1);
+    expect(d.getDepth()).toBe(2);
   });
 });

@@ -1,1 +1,1 @@
-export { PCSNode } from "./PCSNode";
+export { PCSNode } from "./PCSNode.ts";
