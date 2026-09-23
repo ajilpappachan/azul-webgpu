@@ -1,12 +1,16 @@
 export class PCSNode {
   name: string;
-  parent: PCSNode | null = null;
-  child: PCSNode | null = null;
-  nextSibling: PCSNode | null = null;
-  prevSibling: PCSNode | null = null;
+  parent: PCSNode | null;
+  child: PCSNode | null;
+  nextSibling: PCSNode | null;
+  prevSibling: PCSNode | null;
 
   constructor(name: string) {
     this.name = name;
+    this.parent = null;
+    this.child = null;
+    this.nextSibling = null;
+    this.prevSibling = null;
   }
 
   getNumChildren(): number {
