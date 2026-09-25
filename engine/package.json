@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@azul/math": "*",
     "@azul/manager": "*",
     "@azul/pcs": "*",
     "lil-gui": "^0.21.0"

@@ -114,6 +114,31 @@ export class Renderer {
     this.encoder = null;
     this.pass = null;
   }
+  createShaderModule(label: string, code: string): GPUShaderModule {
+    const module: GPUShaderModule = this.device.createShaderModule({
+      label,
+      code,
+    });
+
+    module.getCompilationInfo().then((info: GPUCompilationInfo) => {
+      const lines: string[] = code.split("\n");
+      for (const message of info.messages) {
+        const text: string =
+          `${label}:${message.lineNum}:${message.linePos} ` +
+          `${message.type}: ${message.message}\n` +
+          `    ${lines[message.lineNum - 1] ?? ""}`;
+        if (message.type === "error") {
+          console.error(text);
+        } else if (message.type === "warning") {
+          console.warn(text);
+        } else {
+          console.info(text);
+        }
+      }
+    });
+
+    return module;
+  }
 
   private onResize(entries: ResizeObserverEntry[]): void {
     for (const entry of entries) {
