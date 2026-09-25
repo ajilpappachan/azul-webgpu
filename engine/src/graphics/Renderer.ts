@@ -3,6 +3,12 @@ export class Renderer {
   readonly device: GPUDevice;
   readonly context: GPUCanvasContext;
   readonly format: GPUTextureFormat;
+  readonly depthFormat: GPUTextureFormat;
+
+  private depthTexture: GPUTexture;
+  private encoder: GPUCommandEncoder | null;
+  private pass: GPURenderPassEncoder | null;
+  private resizeObserver: ResizeObserver;
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -14,6 +20,19 @@ export class Renderer {
     this.device = device;
     this.context = context;
     this.format = format;
+    this.depthFormat = "depth24plus";
+    this.encoder = null;
+    this.pass = null;
+
+    this.resizeCanvas(
+      Math.floor(canvas.clientWidth * window.devicePixelRatio),
+      Math.floor(canvas.clientHeight * window.devicePixelRatio),
+    );
+    this.depthTexture = this.createDepthTexture();
+    this.resizeObserver = new ResizeObserver((entries: ResizeObserverEntry[]) =>
+      this.onResize(entries),
+    );
+    this.resizeObserver.observe(canvas);
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -51,27 +70,19 @@ export class Renderer {
       alphaMode: "opaque",
     });
 
-    const renderer: Renderer = new Renderer(canvas, device, context, format);
-    renderer.resize();
-    return renderer;
+    return new Renderer(canvas, device, context, format);
   }
 
-  resize(): void {
-    const dpr: number = window.devicePixelRatio;
-    const max: number = this.device.limits.maxTextureDimension2D;
-    this.canvas.width = Math.min(
-      max,
-      Math.max(1, Math.floor(this.canvas.clientWidth * dpr)),
-    );
-    this.canvas.height = Math.min(
-      max,
-      Math.max(1, Math.floor(this.canvas.clientHeight * dpr)),
-    );
-  }
+  beginFrame(clearColor: GPUColor): GPURenderPassEncoder {
+    if (
+      this.depthTexture.width !== this.canvas.width ||
+      this.depthTexture.height !== this.canvas.height
+    ) {
+      this.depthTexture.destroy();
+      this.depthTexture = this.createDepthTexture();
+    }
 
-  frame(clearColor: GPUColor): void {
     const encoder: GPUCommandEncoder = this.device.createCommandEncoder();
-
     const pass: GPURenderPassEncoder = encoder.beginRenderPass({
       colorAttachments: [
         {
@@ -81,11 +92,64 @@ export class Renderer {
           storeOp: "store",
         },
       ],
+      depthStencilAttachment: {
+        view: this.depthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: "clear",
+        depthStoreOp: "discard",
+      },
     });
 
-    // Draw
+    this.encoder = encoder;
+    this.pass = pass;
+    return pass;
+  }
 
-    pass.end();
-    this.device.queue.submit([encoder.finish()]);
+  endFrame(): void {
+    if (!this.encoder || !this.pass) {
+      throw new Error("endFrame called without beginFrame");
+    }
+    this.pass.end();
+    this.device.queue.submit([this.encoder.finish()]);
+    this.encoder = null;
+    this.pass = null;
+  }
+
+  private onResize(entries: ResizeObserverEntry[]): void {
+    for (const entry of entries) {
+      if (entry.target !== this.canvas) {
+        continue;
+      }
+      if (entry.devicePixelContentBoxSize) {
+        this.resizeCanvas(
+          entry.devicePixelContentBoxSize[0].inlineSize,
+          entry.devicePixelContentBoxSize[0].blockSize,
+        );
+      } else {
+        this.resizeCanvas(
+          Math.floor(
+            entry.contentBoxSize[0].inlineSize * window.devicePixelRatio,
+          ),
+          Math.floor(
+            entry.contentBoxSize[0].blockSize * window.devicePixelRatio,
+          ),
+        );
+      }
+    }
+  }
+
+  private resizeCanvas(width: number, height: number): void {
+    const max: number = this.device.limits.maxTextureDimension2D;
+    this.canvas.width = Math.min(max, Math.max(1, width));
+    this.canvas.height = Math.min(max, Math.max(1, height));
+  }
+
+  private createDepthTexture(): GPUTexture {
+    return this.device.createTexture({
+      label: "depth",
+      size: [this.canvas.width, this.canvas.height],
+      format: this.depthFormat,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
   }
 }
