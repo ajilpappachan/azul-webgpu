@@ -69,26 +69,6 @@ export class PCSTree {
     }
   }
 
-  private unlink(node: PCSNode): void {
-    const parent: PCSNode | null = node.parent;
-    const prev: PCSNode | null = node.prevSibling;
-    const next: PCSNode | null = node.nextSibling;
-
-    if (prev !== null) {
-      prev.nextSibling = next;
-    } else if (parent !== null) {
-      parent.child = next;
-    }
-
-    if (next !== null) {
-      next.prevSibling = prev;
-    }
-
-    node.parent = null;
-    node.prevSibling = null;
-    node.nextSibling = null;
-  }
-
   private static *forward(node: PCSNode | null): Generator<PCSNode> {
     let curr: PCSNode | null = node;
     while (curr !== null) {
@@ -109,5 +89,25 @@ export class PCSTree {
       yield curr;
       curr = curr.prevSibling;
     }
+  }
+
+  private unlink(node: PCSNode): void {
+    const parent: PCSNode | null = node.parent;
+    const prev: PCSNode | null = node.prevSibling;
+    const next: PCSNode | null = node.nextSibling;
+
+    if (prev !== null) {
+      prev.nextSibling = next;
+    } else if (parent !== null) {
+      parent.child = next;
+    }
+
+    if (next !== null) {
+      next.prevSibling = prev;
+    }
+
+    node.parent = null;
+    node.prevSibling = null;
+    node.nextSibling = null;
   }
 }

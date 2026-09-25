@@ -1,6 +1,16 @@
 import { MATH_TOLERANCE } from "./Constants";
 
 export class Vec4 {
+  private data: Float32Array;
+
+  constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 0) {
+    this.data = new Float32Array(4);
+    this.data[0] = x;
+    this.data[1] = y;
+    this.data[2] = z;
+    this.data[3] = w;
+  }
+
   static fromArray(a: ArrayLike<number>, offset: number = 0): Vec4 {
     return new Vec4(a[offset], a[offset + 1], a[offset + 2], a[offset + 3]);
   }
@@ -11,16 +21,6 @@ export class Vec4 {
     out.data[2] = a.data[2] + (b.data[2] - a.data[2]) * t;
     out.data[3] = a.data[3] + (b.data[3] - a.data[3]) * t;
     return out;
-  }
-
-  private data: Float32Array;
-
-  constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 0) {
-    this.data = new Float32Array(4);
-    this.data[0] = x;
-    this.data[1] = y;
-    this.data[2] = z;
-    this.data[3] = w;
   }
 
   get x(): number {

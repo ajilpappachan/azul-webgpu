@@ -4,6 +4,16 @@ import { Vec4 } from "./Vec4";
 import type { Quat } from "./Quat";
 
 export class Mat4 {
+  private data: Float32Array;
+
+  constructor() {
+    this.data = new Float32Array(16);
+    this.data[0] = 1;
+    this.data[5] = 1;
+    this.data[10] = 1;
+    this.data[15] = 1;
+  }
+
   static fromArray(a: ArrayLike<number>, offset: number = 0): Mat4 {
     const m: Mat4 = new Mat4();
     for (let i = 0; i < 16; i++) {
@@ -161,16 +171,6 @@ export class Mat4 {
       o[col * 4 + 3] = a03 * b0 + a13 * b1 + a23 * b2 + a33 * b3;
     }
     return out;
-  }
-
-  private data: Float32Array;
-
-  constructor() {
-    this.data = new Float32Array(16);
-    this.data[0] = 1;
-    this.data[5] = 1;
-    this.data[10] = 1;
-    this.data[15] = 1;
   }
 
   get(row: number, col: number): number {

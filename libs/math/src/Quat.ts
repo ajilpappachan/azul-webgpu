@@ -4,6 +4,16 @@ import type { Vec3 } from "./Vec3";
 const SLERP_EPSILON: number = 0.000001;
 
 export class Quat {
+  private data: Float32Array;
+
+  constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 1) {
+    this.data = new Float32Array(4);
+    this.data[0] = x;
+    this.data[1] = y;
+    this.data[2] = z;
+    this.data[3] = w;
+  }
+
   static fromArray(a: ArrayLike<number>, offset: number = 0): Quat {
     return new Quat(a[offset], a[offset + 1], a[offset + 2], a[offset + 3]);
   }
@@ -59,16 +69,6 @@ export class Quat {
     out.data[2] = scaleA * az + scaleB * bz;
     out.data[3] = scaleA * aw + scaleB * bw;
     return out;
-  }
-
-  private data: Float32Array;
-
-  constructor(x: number = 0, y: number = 0, z: number = 0, w: number = 1) {
-    this.data = new Float32Array(4);
-    this.data[0] = x;
-    this.data[1] = y;
-    this.data[2] = z;
-    this.data[3] = w;
   }
 
   get x(): number {

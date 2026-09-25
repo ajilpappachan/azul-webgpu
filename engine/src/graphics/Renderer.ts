@@ -16,39 +16,6 @@ export class Renderer {
     this.format = format;
   }
 
-  resize(): void {
-    const dpr: number = window.devicePixelRatio;
-    const max: number = this.device.limits.maxTextureDimension2D;
-    this.canvas.width = Math.min(
-      max,
-      Math.max(1, Math.floor(this.canvas.clientWidth * dpr)),
-    );
-    this.canvas.height = Math.min(
-      max,
-      Math.max(1, Math.floor(this.canvas.clientHeight * dpr)),
-    );
-  }
-
-  frame(clearColor: GPUColor): void {
-    const encoder: GPUCommandEncoder = this.device.createCommandEncoder();
-
-    const pass: GPURenderPassEncoder = encoder.beginRenderPass({
-      colorAttachments: [
-        {
-          view: this.context.getCurrentTexture().createView(),
-          clearValue: clearColor,
-          loadOp: "clear",
-          storeOp: "store",
-        },
-      ],
-    });
-
-    // Draw
-
-    pass.end();
-    this.device.queue.submit([encoder.finish()]);
-  }
-
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
     if (!navigator.gpu) {
       throw new Error("WebGPU not supported");
@@ -87,5 +54,38 @@ export class Renderer {
     const renderer: Renderer = new Renderer(canvas, device, context, format);
     renderer.resize();
     return renderer;
+  }
+
+  resize(): void {
+    const dpr: number = window.devicePixelRatio;
+    const max: number = this.device.limits.maxTextureDimension2D;
+    this.canvas.width = Math.min(
+      max,
+      Math.max(1, Math.floor(this.canvas.clientWidth * dpr)),
+    );
+    this.canvas.height = Math.min(
+      max,
+      Math.max(1, Math.floor(this.canvas.clientHeight * dpr)),
+    );
+  }
+
+  frame(clearColor: GPUColor): void {
+    const encoder: GPUCommandEncoder = this.device.createCommandEncoder();
+
+    const pass: GPURenderPassEncoder = encoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: this.context.getCurrentTexture().createView(),
+          clearValue: clearColor,
+          loadOp: "clear",
+          storeOp: "store",
+        },
+      ],
+    });
+
+    // Draw
+
+    pass.end();
+    this.device.queue.submit([encoder.finish()]);
   }
 }

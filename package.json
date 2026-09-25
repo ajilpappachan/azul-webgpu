@@ -10,11 +10,14 @@
     "dev": "npm run dev -w @azul/engine",
     "build": "npm run build -w @azul/engine",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "@webgpu/types": "^0.1.72",
+    "eslint": "^10.11.0",
     "typescript": "~6.0.2",
+    "typescript-eslint": "^8.70.1",
     "vite": "^8.3.0",
     "vitest": "^5.0.1"
   }
