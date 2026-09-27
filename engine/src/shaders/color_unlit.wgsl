@@ -8,10 +8,12 @@ struct VertexOutput {
     @location(0) color: vec3f,
 };
 
+@group(0) @binding(0) var<uniform> model: mat4x4f;
+
 @vertex
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
-    output.clip = vec4f(input.position, 0.0, 1.0);
+    output.clip = model * vec4f(input.position, 0.0, 1.0);
     output.color = input.color;
     return output;
 }

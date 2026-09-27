@@ -114,6 +114,11 @@ export class Renderer {
     this.encoder = null;
     this.pass = null;
   }
+
+  getAspect(): number {
+    return this.canvas.width / this.canvas.height;
+  }
+
   createShaderModule(label: string, code: string): GPUShaderModule {
     const module: GPUShaderModule = this.device.createShaderModule({
       label,
