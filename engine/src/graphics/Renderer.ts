@@ -1,14 +1,21 @@
+import type { Mat4, Vec3 } from "@azul/math";
+
 export class Renderer {
   readonly canvas: HTMLCanvasElement;
   readonly device: GPUDevice;
   readonly context: GPUCanvasContext;
   readonly format: GPUTextureFormat;
   readonly depthFormat: GPUTextureFormat;
+  readonly frameLayout: GPUBindGroupLayout;
+  readonly objectLayout: GPUBindGroupLayout;
 
   private depthTexture: GPUTexture;
   private encoder: GPUCommandEncoder | null;
   private pass: GPURenderPassEncoder | null;
   private resizeObserver: ResizeObserver;
+  private frameData: Float32Array;
+  private frameBuffer: GPUBuffer;
+  private frameBindGroup: GPUBindGroup;
 
   private constructor(
     canvas: HTMLCanvasElement,
@@ -33,6 +40,44 @@ export class Renderer {
       this.onResize(entries),
     );
     this.resizeObserver.observe(canvas);
+
+    this.frameLayout = device.createBindGroupLayout({
+      label: "frame layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
+    this.objectLayout = device.createBindGroupLayout({
+      label: "object layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "uniform" },
+        },
+      ],
+    });
+
+    this.frameData = new Float32Array(20);
+    this.frameBuffer = device.createBuffer({
+      label: "frame uniforms",
+      size: this.frameData.byteLength,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    this.frameBindGroup = device.createBindGroup({
+      label: "frame",
+      layout: this.frameLayout,
+      entries: [
+        {
+          binding: 0,
+          resource: { buffer: this.frameBuffer },
+        },
+      ],
+    });
   }
 
   static async create(canvas: HTMLCanvasElement): Promise<Renderer> {
@@ -100,6 +145,8 @@ export class Renderer {
       },
     });
 
+    pass.setBindGroup(0, this.frameBindGroup);
+
     this.encoder = encoder;
     this.pass = pass;
     return pass;
@@ -113,6 +160,13 @@ export class Renderer {
     this.device.queue.submit([this.encoder.finish()]);
     this.encoder = null;
     this.pass = null;
+  }
+
+  setFrame(viewProj: Mat4, lightDir: Vec3): void {
+    viewProj.copyTo(this.frameData, 0);
+    lightDir.copyTo(this.frameData, 16);
+    this.frameData[19] = 0; // lightDir.w is padding
+    this.device.queue.writeBuffer(this.frameBuffer, 0, this.frameData);
   }
 
   getAspect(): number {

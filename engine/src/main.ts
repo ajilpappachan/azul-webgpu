@@ -1,9 +1,11 @@
 import "./style.css";
 import GUI from "lil-gui";
-import { Mat4, Quat, Vec3 } from "@azul/math";
+import { Mat4, Quat, Vec3, Vec4 } from "@azul/math";
 import { Renderer } from "./graphics/Renderer";
+import { Mesh } from "./graphics/Mesh";
+import { Material } from "./graphics/Material";
 
-import colorUnlitShader from "./shaders/color_unlit.wgsl?raw";
+import colorLitShader from "./shaders/color_lit.wgsl?raw";
 
 const canvas: HTMLCanvasElement | null = document.querySelector("#gpu");
 if (!canvas) {
@@ -14,73 +16,26 @@ const renderer: Renderer = await Renderer.create(canvas);
 
 const device = renderer.device;
 
-const vertices: Float32Array = new Float32Array([
-  0.0, 0.6, 1.0, 0.0, 0.0, -0.6, -0.6, 0.0, 1.0, 0.0, 0.6, -0.6, 0.0, 0.0, 1.0,
-]);
+const cube: Mesh = Mesh.cube(device, 1.0);
 
-const vertexBuffer: GPUBuffer = device.createBuffer({
-  label: "triangle vertices",
-  size: vertices.byteLength,
-  usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
-});
-
-device.queue.writeBuffer(vertexBuffer, 0, vertices);
-
-const module: GPUShaderModule = renderer.createShaderModule(
-  "color_unlit.wgsl",
-  colorUnlitShader,
+const material: Material = new Material(
+  renderer,
+  "color lit",
+  renderer.createShaderModule("color_lit.wgsl", colorLitShader),
+  new Vec4(1.0, 1.0, 1.0, 1.0),
 );
-
-const pipeline: GPURenderPipeline = device.createRenderPipeline({
-  label: "triangle pipeline",
-  layout: "auto",
-  vertex: {
-    module,
-    entryPoint: "vs_main",
-    buffers: [
-      {
-        arrayStride: 20,
-        attributes: [
-          {
-            shaderLocation: 0,
-            offset: 0,
-            format: "float32x2",
-          },
-          {
-            shaderLocation: 1,
-            offset: 8,
-            format: "float32x3",
-          },
-        ],
-      },
-    ],
-  },
-  fragment: {
-    module,
-    entryPoint: "fs_main",
-    targets: [{ format: renderer.format }],
-  },
-  primitive: {
-    topology: "triangle-list",
-  },
-  depthStencil: {
-    format: renderer.depthFormat,
-    depthWriteEnabled: true,
-    depthCompare: "less",
-  },
-});
 
 const modelData: Float32Array = new Float32Array(16);
 
 const modelBuffer: GPUBuffer = device.createBuffer({
-  label: "triangle model",
+  label: "cube model",
   size: modelData.byteLength,
   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
 
 const modelBindGroup: GPUBindGroup = device.createBindGroup({
-  label: "triangle bind group",
-  layout: pipeline.getBindGroupLayout(0),
+  label: "cube model",
+  layout: renderer.objectLayout,
   entries: [
     {
       binding: 0,
@@ -89,7 +44,13 @@ const modelBindGroup: GPUBindGroup = device.createBindGroup({
   ],
 });
 
-const spinAxis: Vec3 = new Vec3(0, 0, 1);
+const view: Mat4 = Mat4.lookAt(
+  new Vec3(0, 1.5, 3),
+  new Vec3(0, 0, 0),
+  new Vec3(0, 1, 0),
+);
+const lightDir: Vec3 = new Vec3(-0.5, -1, -0.7).normalize();
+const spinAxis: Vec3 = new Vec3(1, 1, 0).normalize();
 let angle: number = 0;
 
 const settings = {
@@ -118,12 +79,16 @@ function update(dt: number): void {
   }
 
   angle += dt * settings.spinSpeed;
-  const aspectScale: Mat4 = Mat4.scale(
-    new Vec3(1 / renderer.getAspect(), 1, 1),
-  );
-  const spin: Mat4 = Mat4.fromQuat(Quat.fromAxisAngle(spinAxis, angle));
-  Mat4.multiply(aspectScale, spin).copyTo(modelData);
+  Mat4.fromQuat(Quat.fromAxisAngle(spinAxis, angle)).copyTo(modelData);
   device.queue.writeBuffer(modelBuffer, 0, modelData);
+
+  const proj: Mat4 = Mat4.perspective(
+    Math.PI / 4,
+    renderer.getAspect(),
+    0.1,
+    100,
+  );
+  renderer.setFrame(Mat4.multiply(proj, view), lightDir);
 }
 
 function draw(): void {
@@ -131,10 +96,7 @@ function draw(): void {
     ...settings.clearColor,
     a: 1,
   });
-  pass.setPipeline(pipeline);
-  pass.setBindGroup(0, modelBindGroup);
-  pass.setVertexBuffer(0, vertexBuffer);
-  pass.draw(3);
+  material.draw(pass, cube, modelBindGroup);
   renderer.endFrame();
 }
 
