@@ -4,8 +4,10 @@ import { Mat4, Quat, Vec3, Vec4 } from "@azul/math";
 import { Renderer } from "./graphics/Renderer";
 import { Mesh } from "./graphics/Mesh";
 import { Material } from "./graphics/Material";
+import { Gltf } from "./loader/Gltf";
 
 import colorLitShader from "./shaders/color_lit.wgsl?raw";
+import crateUrl from "./assets/crate_mesh.glb?url";
 
 const canvas: HTMLCanvasElement | null = document.querySelector("#gpu");
 if (!canvas) {
@@ -16,7 +18,8 @@ const renderer: Renderer = await Renderer.create(canvas);
 
 const device = renderer.device;
 
-const cube: Mesh = Mesh.cube(device, 1.0);
+const crateGltf: Gltf = await Gltf.load(crateUrl);
+const crate: Mesh = crateGltf.createMesh(device, 0);
 
 const material: Material = new Material(
   renderer,
@@ -28,13 +31,13 @@ const material: Material = new Material(
 const modelData: Float32Array = new Float32Array(16);
 
 const modelBuffer: GPUBuffer = device.createBuffer({
-  label: "cube model",
+  label: "crate model",
   size: modelData.byteLength,
   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
 });
 
 const modelBindGroup: GPUBindGroup = device.createBindGroup({
-  label: "cube model",
+  label: "crate model",
   layout: renderer.objectLayout,
   entries: [
     {
@@ -45,7 +48,7 @@ const modelBindGroup: GPUBindGroup = device.createBindGroup({
 });
 
 const view: Mat4 = Mat4.lookAt(
-  new Vec3(0, 1.5, 3),
+  new Vec3(0, 2.5, 5),
   new Vec3(0, 0, 0),
   new Vec3(0, 1, 0),
 );
@@ -96,7 +99,7 @@ function draw(): void {
     ...settings.clearColor,
     a: 1,
   });
-  material.draw(pass, cube, modelBindGroup);
+  material.draw(pass, crate, modelBindGroup);
   renderer.endFrame();
 }
 

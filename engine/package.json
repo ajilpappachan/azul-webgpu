@@ -9,9 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@azul/math": "*",
     "@azul/manager": "*",
+    "@azul/math": "*",
     "@azul/pcs": "*",
+    "@loaders.gl/core": "4.5.2",
+    "@loaders.gl/gltf": "4.5.2",
     "lil-gui": "^0.21.0"
   }
 }
