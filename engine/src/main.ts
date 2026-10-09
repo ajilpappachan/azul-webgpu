@@ -4,9 +4,10 @@ import { Mat4, Quat, Vec3, Vec4 } from "@azul/math";
 import { Renderer } from "./graphics/Renderer";
 import { Mesh } from "./graphics/Mesh";
 import { Material } from "./graphics/Material";
+import { Texture } from "./graphics/Texture";
 import { Gltf } from "./loader/Gltf";
 
-import colorLitShader from "./shaders/color_lit.wgsl?raw";
+import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import crateUrl from "./assets/crate_mesh.glb?url";
 
 const canvas: HTMLCanvasElement | null = document.querySelector("#gpu");
@@ -20,12 +21,14 @@ const device = renderer.device;
 
 const crateGltf: Gltf = await Gltf.load(crateUrl);
 const crate: Mesh = crateGltf.createMesh(device, 0);
+const crateTexture: Texture = await crateGltf.createBaseColorTexture(device, 0);
 
 const material: Material = new Material(
   renderer,
-  "color lit",
-  renderer.createShaderModule("color_lit.wgsl", colorLitShader),
+  "texture lit",
+  renderer.createShaderModule("texture_lit.wgsl", textureLitShader),
   new Vec4(1.0, 1.0, 1.0, 1.0),
+  crateTexture,
 );
 
 const modelData: Float32Array = new Float32Array(16);

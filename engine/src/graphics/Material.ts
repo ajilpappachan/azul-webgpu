@@ -1,6 +1,7 @@
 import type { Vec4 } from "@azul/math";
 import { Mesh } from "./Mesh";
 import type { Renderer } from "./Renderer";
+import type { Texture } from "./Texture";
 
 export class Material {
   readonly label: string;
@@ -14,19 +15,35 @@ export class Material {
     label: string,
     module: GPUShaderModule,
     baseColor: Vec4,
+    texture: Texture | null,
   ) {
     const device: GPUDevice = renderer.device;
     this.label = label;
 
+    const layoutEntries: GPUBindGroupLayoutEntry[] = [
+      {
+        binding: 0,
+        visibility: GPUShaderStage.FRAGMENT,
+        buffer: { type: "uniform" },
+      },
+    ];
+    if (texture) {
+      layoutEntries.push(
+        {
+          binding: 1,
+          visibility: GPUShaderStage.FRAGMENT,
+          texture: { sampleType: "float" },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.FRAGMENT,
+          sampler: { type: "filtering" },
+        },
+      );
+    }
     const layout: GPUBindGroupLayout = device.createBindGroupLayout({
       label: `${label} material layout`,
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.FRAGMENT,
-          buffer: { type: "uniform" },
-        },
-      ],
+      entries: layoutEntries,
     });
 
     this.pipeline = device.createRenderPipeline({
@@ -66,17 +83,30 @@ export class Material {
     });
     device.queue.writeBuffer(this.uniformBuffer, 0, data);
 
+    const entries: GPUBindGroupEntry[] = [
+      {
+        binding: 0,
+        resource: {
+          buffer: this.uniformBuffer,
+        },
+      },
+    ];
+    if (texture) {
+      entries.push(
+        {
+          binding: 1,
+          resource: texture.texture.createView(),
+        },
+        {
+          binding: 2,
+          resource: texture.sampler,
+        },
+      );
+    }
     this.bindGroup = device.createBindGroup({
       label: `${label} material`,
       layout,
-      entries: [
-        {
-          binding: 0,
-          resource: {
-            buffer: this.uniformBuffer,
-          },
-        },
-      ],
+      entries,
     });
   }
 

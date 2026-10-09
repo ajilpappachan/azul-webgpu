@@ -2,11 +2,14 @@ import { load } from "@loaders.gl/core";
 import { GLTFLoader, postProcessGLTF } from "@loaders.gl/gltf";
 import type {
   GLTFAccessorPostprocessed,
+  GLTFImagePostprocessed,
   GLTFMeshPostprocessed,
   GLTFMeshPrimitivePostprocessed,
   GLTFPostprocessed,
+  GLTFTexturePostprocessed,
 } from "@loaders.gl/gltf";
 import { Mesh } from "../graphics/Mesh";
+import { Texture } from "../graphics/Texture";
 
 export class Gltf {
   readonly url: string;
@@ -30,21 +33,8 @@ export class Gltf {
   }
 
   createMesh(device: GPUDevice, index: number): Mesh {
-    const mesh: GLTFMeshPostprocessed | undefined = this.data.meshes[index];
-    if (!mesh) {
-      throw new Error(`${this.url}: no mesh ${index}`);
-    }
-    const label: string = mesh.name ?? `${this.url} mesh ${index}`;
-
-    if (mesh.primitives.length !== 1) {
-      throw new Error(
-        `${label}: ${mesh.primitives.length} primitives, expected 1`,
-      );
-    }
-    const primitive: GLTFMeshPrimitivePostprocessed = mesh.primitives[0];
-    if (primitive.mode !== undefined && primitive.mode !== 4) {
-      throw new Error(`${label}: primitive mode ${primitive.mode}, expected 4`);
-    }
+    const label: string = this.getMeshLabel(index);
+    const primitive: GLTFMeshPrimitivePostprocessed = this.getPrimitive(index);
 
     const position: GLTFAccessorPostprocessed = this.getAttribute(
       label,
@@ -85,6 +75,58 @@ export class Gltf {
     const indices: Uint32Array = Uint32Array.from(primitive.indices.value);
 
     return new Mesh(device, label, vertices, indices);
+  }
+
+  async createBaseColorTexture(
+    device: GPUDevice,
+    meshIndex: number,
+  ): Promise<Texture> {
+    const label: string = this.getMeshLabel(meshIndex);
+    const primitive: GLTFMeshPrimitivePostprocessed =
+      this.getPrimitive(meshIndex);
+
+    const source: GLTFTexturePostprocessed | undefined =
+      primitive.material?.pbrMetallicRoughness?.baseColorTexture?.texture;
+    if (!source) {
+      throw new Error(`${label}: no base color texture`);
+    }
+    const image: GLTFImagePostprocessed | undefined = source.source;
+    if (!image || !image.bufferView || !image.mimeType) {
+      throw new Error(`${label}: base color image is not embedded`);
+    }
+
+    const blob: Blob = new Blob([image.bufferView.data.slice()], {
+      type: image.mimeType,
+    });
+    const bitmap: ImageBitmap = await createImageBitmap(blob, {
+      colorSpaceConversion: "none",
+    });
+    const texture: Texture = new Texture(device, `${label} base color`, bitmap);
+    bitmap.close();
+    return texture;
+  }
+
+  private getMeshLabel(index: number): string {
+    const mesh: GLTFMeshPostprocessed | undefined = this.data.meshes[index];
+    if (!mesh) {
+      throw new Error(`${this.url}: no mesh ${index}`);
+    }
+    return mesh.name ?? `${this.url} mesh ${index}`;
+  }
+
+  private getPrimitive(index: number): GLTFMeshPrimitivePostprocessed {
+    const label: string = this.getMeshLabel(index);
+    const mesh: GLTFMeshPostprocessed = this.data.meshes[index];
+    if (mesh.primitives.length !== 1) {
+      throw new Error(
+        `${label}: ${mesh.primitives.length} primitives, expected 1`,
+      );
+    }
+    const primitive: GLTFMeshPrimitivePostprocessed = mesh.primitives[0];
+    if (primitive.mode !== undefined && primitive.mode !== 4) {
+      throw new Error(`${label}: primitive mode ${primitive.mode}, expected 4`);
+    }
+    return primitive;
   }
 
   private getAttribute(
