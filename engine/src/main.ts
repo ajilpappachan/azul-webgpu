@@ -1,11 +1,14 @@
 import "./style.css";
 import GUI from "lil-gui";
-import { Mat4, Quat, Vec3, Vec4 } from "@azul/math";
+import { Quat, Vec3, Vec4 } from "@azul/math";
 import { Renderer } from "./graphics/Renderer";
 import { Mesh } from "./graphics/Mesh";
 import { Material } from "./graphics/Material";
 import { Texture } from "./graphics/Texture";
 import { Gltf } from "./loader/Gltf";
+import { Camera } from "./core/Camera";
+import { GameObject } from "./core/GameObject";
+import { Scene } from "./core/Scene";
 
 import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import crateUrl from "./assets/crate_mesh.glb?url";
@@ -31,30 +34,22 @@ const material: Material = new Material(
   crateTexture,
 );
 
-const modelData: Float32Array = new Float32Array(16);
+const scene: Scene = new Scene(renderer);
 
-const modelBuffer: GPUBuffer = device.createBuffer({
-  label: "crate model",
-  size: modelData.byteLength,
-  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-});
-
-const modelBindGroup: GPUBindGroup = device.createBindGroup({
-  label: "crate model",
-  layout: renderer.objectLayout,
-  entries: [
-    {
-      binding: 0,
-      resource: { buffer: modelBuffer },
-    },
-  ],
-});
-
-const view: Mat4 = Mat4.lookAt(
-  new Vec3(0, 2.5, 5),
-  new Vec3(0, 0, 0),
-  new Vec3(0, 1, 0),
+const crateObj: GameObject = scene.add(
+  new GameObject(renderer, "crate", crate, material),
+  null,
 );
+const moonObj: GameObject = scene.add(
+  new GameObject(renderer, "moon", crate, material),
+  crateObj,
+);
+moonObj.trans.set(2, 0, 0);
+moonObj.scale.set(0.4, 0.4, 0.4);
+
+const camera: Camera = new Camera(Math.PI / 4, 0.1, 100);
+camera.setLookAt(new Vec3(0, 2.5, 5), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
+
 const lightDir: Vec3 = new Vec3(-0.5, -1, -0.7).normalize();
 const spinAxis: Vec3 = new Vec3(1, 1, 0).normalize();
 let angle: number = 0;
@@ -85,16 +80,12 @@ function update(dt: number): void {
   }
 
   angle += dt * settings.spinSpeed;
-  Mat4.fromQuat(Quat.fromAxisAngle(spinAxis, angle)).copyTo(modelData);
-  device.queue.writeBuffer(modelBuffer, 0, modelData);
+  crateObj.rot = Quat.fromAxisAngle(spinAxis, angle);
+  moonObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), -2 * angle);
+  scene.update();
 
-  const proj: Mat4 = Mat4.perspective(
-    Math.PI / 4,
-    renderer.getAspect(),
-    0.1,
-    100,
-  );
-  renderer.setFrame(Mat4.multiply(proj, view), lightDir);
+  camera.update(renderer.getAspect());
+  renderer.setFrame(camera.getViewProj(), lightDir);
 }
 
 function draw(): void {
@@ -102,7 +93,7 @@ function draw(): void {
     ...settings.clearColor,
     a: 1,
   });
-  material.draw(pass, crate, modelBindGroup);
+  scene.draw(pass);
   renderer.endFrame();
 }
 
