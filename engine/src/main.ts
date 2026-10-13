@@ -14,6 +14,7 @@ import { Scene } from "./core/Scene";
 
 import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import crateUrl from "./assets/crate_mesh.glb?url";
+import mouseyUrl from "./assets/Mousey_Mesh.glb?url";
 
 const canvas: HTMLCanvasElement | null = document.querySelector("#gpu");
 if (!canvas) {
@@ -28,20 +29,44 @@ const crateGltf: Gltf = await Gltf.load(crateUrl);
 const crate: Mesh = crateGltf.createMesh(device, 0);
 const crateTexture: Texture = await crateGltf.createBaseColorTexture(device, 0);
 
+const mouseyGltf: Gltf = await Gltf.load(mouseyUrl);
+const mousey: Mesh = mouseyGltf.createMesh(device, 0);
+const mouseyTexture: Texture = await mouseyGltf.createBaseColorTexture(
+  device,
+  0,
+);
+
+const textureLit: GPUShaderModule = renderer.createShaderModule(
+  "texture_lit.wgsl",
+  textureLitShader,
+);
 const material: Material = new Material(
   renderer,
-  "texture lit",
-  renderer.createShaderModule("texture_lit.wgsl", textureLitShader),
+  "crate texture lit",
+  textureLit,
   new Vec4(1.0, 1.0, 1.0, 1.0),
   crateTexture,
+);
+const mouseyMaterial: Material = new Material(
+  renderer,
+  "mousey texture lit",
+  textureLit,
+  new Vec4(1.0, 1.0, 1.0, 1.0),
+  mouseyTexture,
 );
 
 const scene: Scene = new Scene(renderer);
 
+const mouseyObj: GameObject = scene.add(
+  new GameObject(renderer, "mousey", mousey, mouseyMaterial),
+  null,
+);
 const crateObj: GameObject = scene.add(
   new GameObject(renderer, "crate", crate, material),
   null,
 );
+crateObj.trans.set(-2, 1, 0);
+crateObj.scale.set(0.4, 0.4, 0.4);
 const moonObj: GameObject = scene.add(
   new GameObject(renderer, "moon", crate, material),
   crateObj,
@@ -50,7 +75,7 @@ moonObj.trans.set(2, 0, 0);
 moonObj.scale.set(0.4, 0.4, 0.4);
 
 const camera: Camera = new Camera(Math.PI / 4, 0.1, 100);
-camera.setLookAt(new Vec3(0, 2.5, 5), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
+camera.setLookAt(new Vec3(0, 1.5, 4), new Vec3(0, 0.7, 0), new Vec3(0, 1, 0));
 const orbit: OrbitController = new OrbitController(
   camera,
   new Keyboard(window),
@@ -86,6 +111,7 @@ function update(dt: number): void {
   }
 
   angle += dt * settings.spinSpeed;
+  mouseyObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), 0.5 * angle);
   crateObj.rot = Quat.fromAxisAngle(spinAxis, angle);
   moonObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), -2 * angle);
   scene.update();
