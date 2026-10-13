@@ -7,6 +7,8 @@ import { Material } from "./graphics/Material";
 import { Texture } from "./graphics/Texture";
 import { Gltf } from "./loader/Gltf";
 import { Camera } from "./core/Camera";
+import { Keyboard } from "./core/Keyboard";
+import { OrbitController } from "./core/OrbitController";
 import { GameObject } from "./core/GameObject";
 import { Scene } from "./core/Scene";
 
@@ -49,6 +51,10 @@ moonObj.scale.set(0.4, 0.4, 0.4);
 
 const camera: Camera = new Camera(Math.PI / 4, 0.1, 100);
 camera.setLookAt(new Vec3(0, 2.5, 5), new Vec3(0, 0, 0), new Vec3(0, 1, 0));
+const orbit: OrbitController = new OrbitController(
+  camera,
+  new Keyboard(window),
+);
 
 const lightDir: Vec3 = new Vec3(-0.5, -1, -0.7).normalize();
 const spinAxis: Vec3 = new Vec3(1, 1, 0).normalize();
@@ -84,6 +90,7 @@ function update(dt: number): void {
   moonObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), -2 * angle);
   scene.update();
 
+  orbit.update(dt);
   camera.update(renderer.getAspect());
   renderer.setFrame(camera.getViewProj(), lightDir);
 }

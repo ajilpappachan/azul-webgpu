@@ -7,6 +7,7 @@ export class Camera {
   private eye: Vec3;
   private target: Vec3;
   private up: Vec3;
+  private right: Vec3;
   private view: Mat4;
   private proj: Mat4;
   private viewProj: Mat4;
@@ -18,6 +19,7 @@ export class Camera {
     this.eye = new Vec3(0, 0, 1);
     this.target = new Vec3(0, 0, 0);
     this.up = new Vec3(0, 1, 0);
+    this.right = new Vec3(1, 0, 0);
     this.view = Mat4.identity();
     this.proj = Mat4.identity();
     this.viewProj = Mat4.identity();
@@ -29,6 +31,18 @@ export class Camera {
 
   getTarget(): Vec3 {
     return this.target;
+  }
+
+  getUp(): Vec3 {
+    return this.up;
+  }
+
+  getRight(): Vec3 {
+    return this.right;
+  }
+
+  getForward(): Vec3 {
+    return this.target.sub(this.eye).normalize();
   }
 
   getView(): Mat4 {
@@ -50,9 +64,11 @@ export class Camera {
   }
 
   setLookAt(eye: Vec3, target: Vec3, up: Vec3): void {
+    const back: Vec3 = eye.sub(target).normalize();
     this.eye = eye.clone();
     this.target = target.clone();
-    this.up = up.clone();
+    this.right = up.cross(back).normalize();
+    this.up = back.cross(this.right).normalize();
   }
 
   update(aspect: number): void {
