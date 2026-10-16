@@ -8,6 +8,7 @@ export class Renderer {
   readonly depthFormat: GPUTextureFormat;
   readonly frameLayout: GPUBindGroupLayout;
   readonly objectLayout: GPUBindGroupLayout;
+  readonly skinnedObjectLayout: GPUBindGroupLayout;
 
   private depthTexture: GPUTexture;
   private encoder: GPUCommandEncoder | null;
@@ -58,6 +59,21 @@ export class Renderer {
           binding: 0,
           visibility: GPUShaderStage.VERTEX,
           buffer: { type: "uniform" },
+        },
+      ],
+    });
+    this.skinnedObjectLayout = device.createBindGroupLayout({
+      label: "skinned object layout",
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "uniform" },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: "read-only-storage" },
         },
       ],
     });

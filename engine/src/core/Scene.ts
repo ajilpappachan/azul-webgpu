@@ -9,7 +9,7 @@ export class Scene {
 
   constructor(renderer: Renderer) {
     this.tree = new PCSTree();
-    this.root = new GameObject(renderer, "root", null, null);
+    this.root = new GameObject(renderer, "root", null, null, null);
     this.tree.insert(this.root, null);
   }
 

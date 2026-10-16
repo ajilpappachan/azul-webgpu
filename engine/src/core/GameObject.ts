@@ -11,7 +11,8 @@ export class GameObject extends PCSNode {
   readonly mesh: Mesh | null;
   readonly material: Material | null;
 
-  private device: GPUDevice;
+  protected device: GPUDevice;
+
   private local: Mat4;
   private world: Mat4;
   private worldData: Float32Array;
@@ -23,6 +24,7 @@ export class GameObject extends PCSNode {
     name: string,
     mesh: Mesh | null,
     material: Material | null,
+    palette: GPUBuffer | null,
   ) {
     super(name);
     this.trans = new Vec3(0, 0, 0);
@@ -40,15 +42,22 @@ export class GameObject extends PCSNode {
       size: this.worldData.byteLength,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+    const entries: GPUBindGroupEntry[] = [
+      {
+        binding: 0,
+        resource: { buffer: this.worldBuffer },
+      },
+    ];
+    if (palette) {
+      entries.push({
+        binding: 1,
+        resource: { buffer: palette },
+      });
+    }
     this.bindGroup = this.device.createBindGroup({
       label: `${name} object`,
-      layout: renderer.objectLayout,
-      entries: [
-        {
-          binding: 0,
-          resource: { buffer: this.worldBuffer },
-        },
-      ],
+      layout: palette ? renderer.skinnedObjectLayout : renderer.objectLayout,
+      entries,
     });
   }
 

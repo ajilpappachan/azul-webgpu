@@ -1,5 +1,6 @@
 import type { Vec4 } from "@azul/math";
 import { Mesh } from "./Mesh";
+import { SkinnedMesh } from "./SkinnedMesh";
 import type { Renderer } from "./Renderer";
 import type { Texture } from "./Texture";
 
@@ -16,6 +17,7 @@ export class Material {
     module: GPUShaderModule,
     baseColor: Vec4,
     texture: Texture | null,
+    skinned: boolean,
   ) {
     const device: GPUDevice = renderer.device;
     this.label = label;
@@ -50,12 +52,18 @@ export class Material {
       label: `${label} pipeline`,
       layout: device.createPipelineLayout({
         label: `${label} pipeline layout`,
-        bindGroupLayouts: [renderer.frameLayout, layout, renderer.objectLayout],
+        bindGroupLayouts: [
+          renderer.frameLayout,
+          layout,
+          skinned ? renderer.skinnedObjectLayout : renderer.objectLayout,
+        ],
       }),
       vertex: {
         module,
         entryPoint: "vs_main",
-        buffers: [Mesh.layout],
+        buffers: skinned
+          ? [Mesh.layout, SkinnedMesh.skinLayout]
+          : [Mesh.layout],
       },
       fragment: {
         module,
