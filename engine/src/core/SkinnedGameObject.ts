@@ -1,12 +1,14 @@
 import { Quat } from "@azul/math";
 import { GameObject } from "./GameObject";
 import { Skeleton } from "../animation/Skeleton";
+import type { Animator } from "../animation/Animator";
 import type { Renderer } from "../graphics/Renderer";
 import type { SkinnedMesh } from "../graphics/SkinnedMesh";
 import type { Material } from "../graphics/Material";
 
 export class SkinnedGameObject extends GameObject {
   readonly skeleton: Skeleton;
+  animator: Animator | null;
 
   private pose: Float32Array;
   private palette: Float32Array;
@@ -27,6 +29,7 @@ export class SkinnedGameObject extends GameObject {
     super(renderer, name, mesh, material, paletteBuffer);
 
     this.skeleton = skeleton;
+    this.animator = null;
     this.pose = skeleton.restPose.slice();
     this.palette = new Float32Array(skeleton.boneCount * 16);
     this.paletteBuffer = paletteBuffer;
@@ -50,6 +53,9 @@ export class SkinnedGameObject extends GameObject {
 
   override update(): void {
     super.update();
+    if (this.animator !== null) {
+      this.animator.writePose(this.pose);
+    }
     this.skeleton.computePalette(this.pose, this.palette);
     this.device.queue.writeBuffer(this.paletteBuffer, 0, this.palette);
   }

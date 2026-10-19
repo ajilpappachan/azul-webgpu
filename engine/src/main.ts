@@ -14,6 +14,8 @@ import { GameObject } from "./core/GameObject";
 import { SkinnedGameObject } from "./core/SkinnedGameObject";
 import { Scene } from "./core/Scene";
 import { Skeleton } from "./animation/Skeleton";
+import { Clip } from "./animation/Clip";
+import { Animator } from "./animation/Animator";
 
 import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import skinnedTextureLitShader from "./shaders/skinned_texture_lit.wgsl?raw";
@@ -44,6 +46,7 @@ const mouseyTexture: Texture = await mouseyGltf.createBaseColorTexture(
   device,
   0,
 );
+const mouseyClip: Clip = mouseyGltf.createClip(0, mouseySkeleton);
 
 const textureLit: GPUShaderModule = renderer.createShaderModule(
   "texture_lit.wgsl",
@@ -79,6 +82,8 @@ const mouseyObj: SkinnedGameObject = new SkinnedGameObject(
   mouseyMaterial,
   mouseySkeleton,
 );
+const mouseyAnimator: Animator = new Animator(mouseyClip);
+mouseyObj.animator = mouseyAnimator;
 scene.add(mouseyObj, null);
 const crateObj: GameObject = scene.add(
   new GameObject(renderer, "crate", crate, material, null),
@@ -102,51 +107,62 @@ const orbit: OrbitController = new OrbitController(
 
 const lightDir: Vec3 = new Vec3(-0.5, -1, -0.7).normalize();
 const spinAxis: Vec3 = new Vec3(1, 1, 0).normalize();
-const boneAxis: Vec3 = new Vec3(0, 0, 1);
 let angle: number = 0;
 
 const settings = {
   clearColor: { r: 0.1, g: 0.2, b: 0.35 },
   spinSpeed: 1.0,
-  bone: mouseySkeleton.names[0],
-  boneAngle: 0.0,
+  play: true,
+  speed: 1.0,
+  phase: 0.0,
   fps: 0,
+  updateMs: 0,
   size: "",
 };
 const gui: GUI = new GUI({ title: "Debug" });
 gui.addColor(settings, "clearColor");
 gui.add(settings, "spinSpeed", -5, 5, 0.1);
-gui.add(settings, "bone", mouseySkeleton.names);
-gui.add(settings, "boneAngle", -1.5, 1.5, 0.01);
+gui.add(settings, "play").onChange((play: boolean) => {
+  mouseyAnimator.playing = play;
+});
+gui.add(settings, "speed", 0, 2, 0.05).onChange((speed: number) => {
+  mouseyAnimator.speed = speed;
+});
+gui
+  .add(settings, "phase", 0, 1, 0.001)
+  .listen()
+  .onChange((phase: number) => {
+    mouseyAnimator.setPhase(phase);
+  });
 gui.add(settings, "fps").decimals(1).listen().disable();
+gui.add(settings, "updateMs").decimals(3).listen().disable();
 gui.add(settings, "size").listen().disable();
 
 let fpsFrames: number = 0;
 let fpsTime: number = 0;
+let updateTime: number = 0;
 
 function update(dt: number): void {
   fpsFrames++;
   fpsTime += dt;
   if (fpsTime >= 0.5) {
     settings.fps = fpsFrames / fpsTime;
+    settings.updateMs = updateTime / fpsFrames;
     settings.size = `${renderer.canvas.width} x ${renderer.canvas.height}`;
     fpsFrames = 0;
     fpsTime = 0;
+    updateTime = 0;
   }
 
   angle += dt * settings.spinSpeed;
   mouseyObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), 0.5 * angle);
-  mouseyObj.resetPose();
-  const bone: number = mouseySkeleton.findBone(settings.bone);
-  mouseyObj.setBoneRotation(
-    bone,
-    mouseyObj
-      .getRestRotation(bone)
-      .multiply(Quat.fromAxisAngle(boneAxis, settings.boneAngle)),
-  );
+  mouseyAnimator.update(dt);
+  settings.phase = mouseyAnimator.getPhase();
   crateObj.rot = Quat.fromAxisAngle(spinAxis, angle);
   moonObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), -2 * angle);
+  const updateStart: number = performance.now();
   scene.update();
+  updateTime += performance.now() - updateStart;
 
   orbit.update(dt);
   camera.update(renderer.getAspect());

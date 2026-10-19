@@ -14,8 +14,12 @@ import { Mesh } from "../graphics/Mesh";
 import { SkinnedMesh } from "../graphics/SkinnedMesh";
 import { Texture } from "../graphics/Texture";
 import { Skeleton } from "../animation/Skeleton";
+import { Clip } from "../animation/Clip";
 
 type GLTFSkinPostprocessed = GLTFPostprocessed["skins"][number];
+type GLTFAnimationPostprocessed = GLTFPostprocessed["animations"][number];
+type GLTFAnimationSamplerPostprocessed =
+  GLTFAnimationPostprocessed["samplers"][number];
 
 export class Gltf {
   readonly url: string;
@@ -40,6 +44,10 @@ export class Gltf {
 
   getNumSkins(): number {
     return this.data.skins.length;
+  }
+
+  getNumAnimations(): number {
+    return this.data.animations.length;
   }
 
   createMesh(device: GPUDevice, index: number): Mesh {
@@ -211,6 +219,75 @@ export class Gltf {
     );
   }
 
+  createClip(index: number, skeleton: Skeleton): Clip {
+    const animation: GLTFAnimationPostprocessed | undefined =
+      this.data.animations[index];
+    if (!animation) {
+      throw new Error(`${this.url}: no animation ${index}`);
+    }
+    const label: string = animation.name ?? `${this.url} animation ${index}`;
+
+    const boneCount: number = skeleton.boneCount;
+    const translations: (GLTFAnimationSamplerPostprocessed | null)[] = [];
+    const rotations: (GLTFAnimationSamplerPostprocessed | null)[] = [];
+    const scales: (GLTFAnimationSamplerPostprocessed | null)[] = [];
+    for (let b = 0; b < boneCount; b++) {
+      translations.push(null);
+      rotations.push(null);
+      scales.push(null);
+    }
+
+    let duration: number = 0;
+    for (const channel of animation.channels) {
+      if (channel.target.node === undefined) {
+        throw new Error(`${label}: channel has no target node`);
+      }
+      const node: GLTFNodePostprocessed = this.data.nodes[channel.target.node];
+      const bone: number = skeleton.findBone(node.name ?? node.id);
+      if (bone < 0) {
+        throw new Error(`${label}: ${node.name ?? node.id} is not a bone`);
+      }
+      const sampler: GLTFAnimationSamplerPostprocessed =
+        animation.samplers[channel.sampler];
+      const interpolation: string = sampler.interpolation ?? "LINEAR";
+      if (interpolation !== "LINEAR") {
+        throw new Error(`${label}: ${interpolation} interpolation, expected LINEAR`);
+      }
+      const input: GLTFAccessorPostprocessed = this.data.accessors[sampler.input];
+      duration = Math.max(duration, input.value[input.count - 1]);
+
+      if (channel.target.path === "translation") {
+        translations[bone] = sampler;
+      } else if (channel.target.path === "rotation") {
+        rotations[bone] = sampler;
+      } else if (channel.target.path === "scale") {
+        scales[bone] = sampler;
+      } else {
+        throw new Error(`${label}: ${channel.target.path} channel not supported`);
+      }
+    }
+    if (duration <= 0) {
+      throw new Error(`${label}: duration ${duration}`);
+    }
+
+    const frameCount: number =
+      Math.ceil(duration * Clip.FRAME_RATE - 1e-3) + 1;
+    const frameSize: number = boneCount * Skeleton.POSE_STRIDE;
+    const frames: Float32Array = new Float32Array(frameCount * frameSize);
+    for (let f = 0; f < frameCount; f++) {
+      const time: number = (duration * f) / (frameCount - 1);
+      frames.set(skeleton.restPose, f * frameSize);
+      for (let b = 0; b < boneCount; b++) {
+        const p: number = f * frameSize + b * Skeleton.POSE_STRIDE;
+        this.sampleChannel(translations[b], time, 3, frames, p + 0);
+        this.sampleChannel(rotations[b], time, 4, frames, p + 4);
+        this.sampleChannel(scales[b], time, 3, frames, p + 8);
+      }
+    }
+
+    return new Clip(label, boneCount, frameCount, duration, frames);
+  }
+
   async createBaseColorTexture(
     device: GPUDevice,
     meshIndex: number,
@@ -287,6 +364,58 @@ export class Gltf {
       throw new Error(`${label}: no indices`);
     }
     return Uint32Array.from(primitive.indices.value);
+  }
+
+  private sampleChannel(
+    sampler: GLTFAnimationSamplerPostprocessed | null,
+    time: number,
+    components: number,
+    out: Float32Array,
+    offset: number,
+  ): void {
+    if (sampler === null) {
+      return;
+    }
+    const times: ArrayLike<number> = this.data.accessors[sampler.input].value;
+    const values: ArrayLike<number> = this.data.accessors[sampler.output].value;
+    const last: number = times.length - 1;
+
+    let key: number = 0;
+    let u: number = 0;
+    if (time >= times[last]) {
+      key = last;
+    } else if (time > times[0]) {
+      let lo: number = 0;
+      let hi: number = last;
+      while (hi - lo > 1) {
+        const mid: number = (lo + hi) >> 1;
+        if (times[mid] <= time) {
+          lo = mid;
+        } else {
+          hi = mid;
+        }
+      }
+      key = lo;
+      u = (time - times[lo]) / (times[hi] - times[lo]);
+    }
+
+    if (u === 0) {
+      for (let i = 0; i < components; i++) {
+        out[offset + i] = values[key * components + i];
+      }
+    } else if (components === 4) {
+      Quat.slerp(
+        Quat.fromArray(values, key * 4),
+        Quat.fromArray(values, (key + 1) * 4),
+        u,
+      ).copyTo(out, offset);
+    } else {
+      Vec3.lerp(
+        Vec3.fromArray(values, key * 3),
+        Vec3.fromArray(values, (key + 1) * 3),
+        u,
+      ).copyTo(out, offset);
+    }
   }
 
   private collectJoints(
