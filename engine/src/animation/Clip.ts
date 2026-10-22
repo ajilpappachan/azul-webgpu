@@ -47,6 +47,19 @@ export class Clip {
     this.sb = new Vec3(1, 1, 1);
   }
 
+  removeRootMotion(): void {
+    const frameSize: number = this.boneCount * Skeleton.POSE_STRIDE;
+    const last: number = (this.frameCount - 1) * frameSize;
+
+    for (let k = 0; k < 3; k++) {
+      const drift: number = this.frames[last + k] - this.frames[k];
+      for (let f = 0; f < this.frameCount; f++) {
+        const u: number = f / (this.frameCount - 1);
+        this.frames[f * frameSize + k] -= drift * u;
+      }
+    }
+  }
+
   sample(phase: number, out: Float32Array): void {
     const f: number = phase * (this.frameCount - 1);
     const frame: number = Math.min(Math.floor(f), this.frameCount - 2);

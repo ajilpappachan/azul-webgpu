@@ -21,6 +21,7 @@ import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import skinnedTextureLitShader from "./shaders/skinned_texture_lit.wgsl?raw";
 import crateUrl from "./assets/crate_mesh.glb?url";
 import mouseyUrl from "./assets/Mousey_Mesh.glb?url";
+import runUrl from "./assets/Mousey_Anim_Run_Forward.glb?url";
 
 const canvas: HTMLCanvasElement | null = document.querySelector("#gpu");
 if (!canvas) {
@@ -46,7 +47,10 @@ const mouseyTexture: Texture = await mouseyGltf.createBaseColorTexture(
   device,
   0,
 );
-const mouseyClip: Clip = mouseyGltf.createClip(0, mouseySkeleton);
+const danceClip: Clip = mouseyGltf.createClip(0, mouseySkeleton);
+const runGltf: Gltf = await Gltf.load(runUrl);
+const runClip: Clip = runGltf.createClip(0, mouseySkeleton);
+runClip.removeRootMotion();
 
 const textureLit: GPUShaderModule = renderer.createShaderModule(
   "texture_lit.wgsl",
@@ -82,7 +86,7 @@ const mouseyObj: SkinnedGameObject = new SkinnedGameObject(
   mouseyMaterial,
   mouseySkeleton,
 );
-const mouseyAnimator: Animator = new Animator(mouseyClip);
+const mouseyAnimator: Animator = new Animator(danceClip, runClip);
 mouseyObj.animator = mouseyAnimator;
 scene.add(mouseyObj, null);
 const crateObj: GameObject = scene.add(
@@ -114,7 +118,9 @@ const settings = {
   spinSpeed: 1.0,
   play: true,
   speed: 1.0,
+  blend: 0.0,
   phase: 0.0,
+  cycle: 0,
   fps: 0,
   updateMs: 0,
   size: "",
@@ -128,12 +134,16 @@ gui.add(settings, "play").onChange((play: boolean) => {
 gui.add(settings, "speed", 0, 2, 0.05).onChange((speed: number) => {
   mouseyAnimator.speed = speed;
 });
+gui.add(settings, "blend", 0, 1, 0.01).onChange((blend: number) => {
+  mouseyAnimator.blend = blend;
+});
 gui
   .add(settings, "phase", 0, 1, 0.001)
   .listen()
   .onChange((phase: number) => {
     mouseyAnimator.setPhase(phase);
   });
+gui.add(settings, "cycle").decimals(3).listen().disable();
 gui.add(settings, "fps").decimals(1).listen().disable();
 gui.add(settings, "updateMs").decimals(3).listen().disable();
 gui.add(settings, "size").listen().disable();
@@ -158,6 +168,7 @@ function update(dt: number): void {
   mouseyObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), 0.5 * angle);
   mouseyAnimator.update(dt);
   settings.phase = mouseyAnimator.getPhase();
+  settings.cycle = mouseyAnimator.getCycleDuration();
   crateObj.rot = Quat.fromAxisAngle(spinAxis, angle);
   moonObj.rot = Quat.fromAxisAngle(new Vec3(0, 1, 0), -2 * angle);
   const updateStart: number = performance.now();
