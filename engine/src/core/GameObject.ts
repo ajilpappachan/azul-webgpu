@@ -77,6 +77,8 @@ export class GameObject extends PCSNode {
     this.device.queue.writeBuffer(this.worldBuffer, 0, this.worldData);
   }
 
+  compute(_pass: GPUComputePassEncoder): void {}
+
   draw(pass: GPURenderPassEncoder): void {
     if (this.mesh === null || this.material === null) {
       return;

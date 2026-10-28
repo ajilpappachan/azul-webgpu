@@ -16,9 +16,11 @@ import { Scene } from "./core/Scene";
 import { Skeleton } from "./animation/Skeleton";
 import { Clip } from "./animation/Clip";
 import { Animator } from "./animation/Animator";
+import { WorldCompute } from "./animation/WorldCompute";
 
 import textureLitShader from "./shaders/texture_lit.wgsl?raw";
 import skinnedTextureLitShader from "./shaders/skinned_texture_lit.wgsl?raw";
+import worldShader from "./shaders/world.wgsl?raw";
 import crateUrl from "./assets/crate_mesh.glb?url";
 import mouseyUrl from "./assets/Mousey_Mesh.glb?url";
 import runUrl from "./assets/Mousey_Anim_Run_Forward.glb?url";
@@ -60,6 +62,10 @@ const skinnedTextureLit: GPUShaderModule = renderer.createShaderModule(
   "skinned_texture_lit.wgsl",
   skinnedTextureLitShader,
 );
+const worldCompute: WorldCompute = new WorldCompute(
+  renderer,
+  renderer.createShaderModule("world.wgsl", worldShader),
+);
 const material: Material = new Material(
   renderer,
   "crate texture lit",
@@ -85,7 +91,9 @@ const mouseyObj: SkinnedGameObject = new SkinnedGameObject(
   mousey,
   mouseyMaterial,
   mouseySkeleton,
+  worldCompute,
 );
+mouseyObj.gpuWorld = true;
 const mouseyAnimator: Animator = new Animator(danceClip, runClip);
 mouseyObj.animator = mouseyAnimator;
 scene.add(mouseyObj, null);
@@ -119,6 +127,7 @@ const settings = {
   play: true,
   speed: 1.0,
   blend: 0.0,
+  gpuWorld: true,
   phase: 0.0,
   cycle: 0,
   fps: 0,
@@ -136,6 +145,9 @@ gui.add(settings, "speed", 0, 2, 0.05).onChange((speed: number) => {
 });
 gui.add(settings, "blend", 0, 1, 0.01).onChange((blend: number) => {
   mouseyAnimator.blend = blend;
+});
+gui.add(settings, "gpuWorld").onChange((gpuWorld: boolean) => {
+  mouseyObj.gpuWorld = gpuWorld;
 });
 gui
   .add(settings, "phase", 0, 1, 0.001)
@@ -181,6 +193,10 @@ function update(dt: number): void {
 }
 
 function draw(): void {
+  const computePass: GPUComputePassEncoder = renderer.beginCompute();
+  scene.compute(computePass);
+  renderer.endCompute();
+
   const pass: GPURenderPassEncoder = renderer.beginFrame({
     ...settings.clearColor,
     a: 1,

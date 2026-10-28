@@ -13,6 +13,8 @@ export class Renderer {
   private depthTexture: GPUTexture;
   private encoder: GPUCommandEncoder | null;
   private pass: GPURenderPassEncoder | null;
+  private computeEncoder: GPUCommandEncoder | null;
+  private computePass: GPUComputePassEncoder | null;
   private resizeObserver: ResizeObserver;
   private frameData: Float32Array;
   private frameBuffer: GPUBuffer;
@@ -31,6 +33,8 @@ export class Renderer {
     this.depthFormat = "depth24plus";
     this.encoder = null;
     this.pass = null;
+    this.computeEncoder = null;
+    this.computePass = null;
 
     this.resizeCanvas(
       Math.floor(canvas.clientWidth * window.devicePixelRatio),
@@ -132,6 +136,29 @@ export class Renderer {
     });
 
     return new Renderer(canvas, device, context, format);
+  }
+
+  beginCompute(): GPUComputePassEncoder {
+    const encoder: GPUCommandEncoder = this.device.createCommandEncoder({
+      label: "compute",
+    });
+    const pass: GPUComputePassEncoder = encoder.beginComputePass({
+      label: "compute",
+    });
+
+    this.computeEncoder = encoder;
+    this.computePass = pass;
+    return pass;
+  }
+
+  endCompute(): void {
+    if (!this.computeEncoder || !this.computePass) {
+      throw new Error("endCompute called without beginCompute");
+    }
+    this.computePass.end();
+    this.device.queue.submit([this.computeEncoder.finish()]);
+    this.computeEncoder = null;
+    this.computePass = null;
   }
 
   beginFrame(clearColor: GPUColor): GPURenderPassEncoder {

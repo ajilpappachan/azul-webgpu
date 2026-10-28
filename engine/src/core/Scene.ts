@@ -35,6 +35,12 @@ export class Scene {
     }
   }
 
+  compute(pass: GPUComputePassEncoder): void {
+    for (const node of this.tree) {
+      (node as GameObject).compute(pass);
+    }
+  }
+
   draw(pass: GPURenderPassEncoder): void {
     for (const node of this.tree) {
       (node as GameObject).draw(pass);
